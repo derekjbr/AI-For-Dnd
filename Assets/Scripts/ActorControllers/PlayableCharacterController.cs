@@ -34,6 +34,10 @@ public class PlayableCharacterController : ActorController
         LineRenderer.startWidth = 0.2f;
         LineRenderer.endWidth = 0.2f;
         LineRenderer.positionCount = 0;
+
+        // Setting Actor Stats
+        Stats.MaxDistance = 10f;
+        Stats.CurrentHealth = Stats.MaxHeatlh = 20f;
     }
     private void DrawPath(NavMeshPath path)
     {
@@ -83,9 +87,6 @@ public class PlayableCharacterController : ActorController
         if (Vector3.Distance(Agent.destination, transform.position) <= Agent.stoppingDistance)
         {
             Agent.isStopped = true;
-        } else
-        {
-            Agent.isStopped = false;
         }
     }
 
@@ -97,7 +98,17 @@ public class PlayableCharacterController : ActorController
 
     protected override void TakeTurn()
     {
-        throw new NotImplementedException();
+        if (CurrentBattle == null)
+            return;
+
+        if(Input.GetKeyDown(KeyCode.Tab))
+        {
+            CurrentBattle.RequestEndOfTurn(this);
+            return;
+        }
+
+        UpdateShownPath();
+        UpdateAgent();
     }
 
     override protected void UpdateAnimationState()
@@ -114,15 +125,58 @@ public class PlayableCharacterController : ActorController
 
     public void SetDestination(Vector3 des)
     {
-        Agent.destination = des;
-        ShownPath = PathType.CurrentPath;
+        if (CurrentState == ActorState.Turn)
+        {
+            float result = VerifyPathIsValidForTurn(des, Stats.RemainingDistance);
+            if (result != -1f)
+            {
+                Agent.SetDestination(des);
+                Agent.isStopped = false;
+                Stats.RemainingDistance -= result;
+                ShownPath = PathType.CurrentPath;
+            }
+        }
+        else if(CurrentState != ActorState.Battle)
+        {
+            Agent.destination = des;
+            ShownPath = PathType.CurrentPath;
+            Agent.isStopped = false;
+        }
+    }
+
+    public override int RollInitiative()
+    {
+        return 21;
     }
 
     public void SetTestDestination(Vector3 des)
     {
         if (Agent.CalculatePath(des, TestPath) && ShownPath != PathType.CurrentPath)
         {
-            ShownPath = PathType.TestPath;
+            if (CurrentState == ActorState.Turn)
+            {
+                float result = VerifyPathIsValidForTurn(des, Stats.RemainingDistance);
+                if (result != -1f)
+                {
+                    ShownPath = PathType.TestPath;
+                } else
+                {
+                    ShownPath = PathType.None;
+                }
+            }
+            else
+            {
+                ShownPath = PathType.TestPath;
+            }
+        }
+    }
+
+    public override void SetCurrentState(ActorState state)
+    {
+        base.SetCurrentState(state);
+        if(state == ActorState.Battle)
+        {
+            ShownPath = PathType.None;
         }
     }
 }

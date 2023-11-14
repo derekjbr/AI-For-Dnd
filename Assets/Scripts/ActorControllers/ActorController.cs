@@ -12,6 +12,15 @@ public enum ActorState
     Dead
 }
 
+public struct ActorStats
+{
+    public float MaxDistance;
+    public float RemainingDistance;
+    public float MaxHeatlh;
+    public float CurrentHealth;
+    public float Reach;
+}
+
 [RequireComponent(typeof(Animator))]
 [RequireComponent(typeof(NavMeshAgent))]
 public abstract class ActorController : MonoBehaviour
@@ -23,9 +32,12 @@ public abstract class ActorController : MonoBehaviour
 
     public bool DrawDebugInformation;
 
+    public ActorStats Stats;
+
     protected NavMeshAgent Agent;
     protected ActorState CurrentState;
     protected BattleController GameMaster;
+    protected Battle CurrentBattle;
 
 
     private static System.Random Rand = new System.Random();
@@ -40,11 +52,11 @@ public abstract class ActorController : MonoBehaviour
         return Rand.Next(1, 21);
     }
 
-    public void SetCurrentState(ActorState state)
+    public virtual void SetCurrentState(ActorState state)
     {
         if (Agent != null)
-        {
-            if (CurrentState == ActorState.Roam && state != ActorState.Roam)
+        { 
+            if ((CurrentState == ActorState.Roam && state != ActorState.Roam) || state == ActorState.Battle || state == ActorState.Turn)
             {
                 Agent.isStopped = true;
             }
@@ -52,13 +64,25 @@ public abstract class ActorController : MonoBehaviour
             {
                 Agent.isStopped = false;
             }
+
+            if (state == ActorState.Turn)
+            {
+                Stats.RemainingDistance = Stats.MaxDistance;
+            }
         }
-        CurrentState = state;
+
+        if(CurrentState != ActorState.Dead)
+            CurrentState = state;
     }
 
     public void SetBattleController(BattleController battleController)
     {
         GameMaster = battleController;
+    }
+
+    public void SetCurrentBattle(Battle battle)
+    {
+        CurrentBattle = battle;
     }
 
     public Vector3 GetEyesLocation()
@@ -134,5 +158,27 @@ public abstract class ActorController : MonoBehaviour
     protected bool HasAgentReachedDestination()
     {
         return Vector3.Distance(Agent.destination, transform.position) <= Agent.stoppingDistance;
+    }
+
+    protected float VerifyPathIsValidForTurn(Vector3 des, float remainingDistance)
+    {
+        NavMeshPath path = new NavMeshPath();
+        Agent.CalculatePath(des, path);
+        float distance = 0f;
+        Vector3 prevPoint = this.transform.position;
+        foreach (Vector3 point in path.corners)
+        {
+            distance += Vector3.Distance(prevPoint, point);
+            prevPoint = point;
+        }
+        path = null;
+
+        if(distance > remainingDistance)
+        {
+            return -1f;
+        } else
+        {
+            return distance;
+        }
     }
 }

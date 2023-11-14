@@ -63,9 +63,13 @@ public class GoblnController : ActorController
 
         GoblinState = GoblinStates.RoamingOnPath;
 
-        CurrentNodeOnRoamingPath = 0;
+        CurrentNodeOnRoamingPath = -1;
         ArrivalTimeAtEndNode = 0f;
         DirectionOfNodeTraversal = 1;
+
+        // Setting Actor Stats
+        Stats.MaxDistance = 8f;
+        Stats.Reach = 2f;
     }
 
     protected override void Roam()
@@ -85,8 +89,16 @@ public class GoblnController : ActorController
         
     }
 
+    protected override void TakeTurn()
+    {
+        if (CurrentBattle == null)
+        {
+            return;
+        }
+    }
     private void ScoutLocation()
     {
+        Agent.isStopped = true;
         DebuggingTime = AnimatorController.GetCurrentAnimatorStateInfo(0).normalizedTime % 1f;
         TestAngleDifference = LookDirectionCurve.Evaluate(DebuggingTime);
 
@@ -109,6 +121,7 @@ public class GoblnController : ActorController
 
     private void FollowSpottedEnemy()
     {
+        Agent.isStopped = false;
         float currentTime = Time.time;
         Agent.speed = SpottedSpeed;
         if(!HasSeenPCActor())
@@ -121,19 +134,20 @@ public class GoblnController : ActorController
             }
         } else
         {
-            if(currentTime - TimeSinceLastEvent > SpottingTime)
+            if(currentTime - TimeSinceLastEvent > SpottingTime || Vector3.Distance(this.transform.position, LastSeenPC.transform.position) <= Stats.Reach)
             {
                 List<ActorController> spottedEnemyAndFriends = new List<ActorController>();
                 spottedEnemyAndFriends.Add(LastSeenPC);
 
                 GameMaster.RequestBattle(this, spottedEnemyAndFriends);
-            }
+            } 
             Agent.destination = LastSeenPCLocation;
         }
     }
 
     private void FollowRoamingPath()
     {
+        Agent.isStopped = false;
         if (HasSeenPCActor())
         {
             GoblinState = GoblinStates.SpottedEnemy;
@@ -144,15 +158,25 @@ public class GoblnController : ActorController
         Agent.speed = RoamingSpeed;
         if (HasAgentReachedDestination() && GoblinState == GoblinStates.RoamingOnPath)
         {
-            Vector3 currentNode = RoamingPath[CurrentNodeOnRoamingPath];
-            Agent.destination = currentNode;
+            // If I have reached either end of the roaming path, scount for a bit
+            if(CurrentNodeOnRoamingPath == 0 || CurrentNodeOnRoamingPath == RoamingPath.Count - 1)
+            {
+                GoblinState = GoblinStates.Scouting;
+            }
 
+            // Change directions if I have reached the end
             if (CurrentNodeOnRoamingPath + 1 * DirectionOfNodeTraversal < 0 || CurrentNodeOnRoamingPath + 1 * DirectionOfNodeTraversal >= RoamingPath.Count)
             {
                 DirectionOfNodeTraversal *= -1;
             }
+
+            // Get the next node
             CurrentNodeOnRoamingPath += 1 * DirectionOfNodeTraversal;
+
+            // Set the path of the next node
             Vector3 nextNode = RoamingPath[CurrentNodeOnRoamingPath];
+            Agent.destination = nextNode;
+
         }
     }
 
@@ -180,10 +204,6 @@ public class GoblnController : ActorController
         return false;
     }
 
-    protected override void TakeTurn()
-    {
-        throw new System.NotImplementedException();
-    }
 
     protected override void UpdateAnimationState()
     {
