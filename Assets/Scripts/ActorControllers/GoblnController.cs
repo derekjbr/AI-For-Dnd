@@ -62,7 +62,7 @@ public class GoblnController : GoalOrientatedController
         CurrentNodeOnRoamingPath = -1;
         DirectionOfNodeTraversal = 1;
 
-        HealthItems.Add(SmallPotion.GetInstance(), 0);
+        HealthItems.Add(SmallPotion.GetInstance(), 1);
         WorldConditions.Add("canRunAway", 0);
         WorldConditions.Add("IsNotExhausted", 0);
     }
