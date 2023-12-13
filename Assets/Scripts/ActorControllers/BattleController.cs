@@ -25,12 +25,17 @@ public class BattleController : MonoBehaviour
 
     }
 
-    public void RequestBattle(ActorController requestor, List<ActorController> requestedActors)
+    public void RequestBattle()
     {
-        List<ActorController> everyone = new List<ActorController>(requestedActors);
-        everyone.Add(requestor);
+        Battle newBattle = new Battle(Actors);
 
-        ActiveBattles.Add(new Battle(everyone));
+        newBattle.StartBattle();
+        ActiveBattles.Add(newBattle);
+    }
+
+    private IEnumerator WaitForEndOfFrameCoroutine()
+    {
+        yield return (new WaitForEndOfFrame());
     }
 }
 
