@@ -25,15 +25,9 @@ public class BattleController : MonoBehaviour
 
     }
 
-    public void RequestBattle(ActorController requestor, List<ActorController> requestedActors)
+    public void RequestBattle()
     {
-        List<ActorController> everyone = new List<ActorController>(requestedActors);
-        everyone.Add(requestor);
-
-        Battle newBattle = new Battle(everyone);
-
-        StartCoroutine(WaitForEndOfFrameCoroutine());
-        StartCoroutine(WaitForEndOfFrameCoroutine());
+        Battle newBattle = new Battle(Actors);
 
         newBattle.StartBattle();
         ActiveBattles.Add(newBattle);

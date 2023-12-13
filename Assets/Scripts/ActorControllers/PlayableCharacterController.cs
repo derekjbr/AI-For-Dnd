@@ -11,7 +11,6 @@ public class PlayableCharacterController : ActorController
 {
     public bool IsSelected = false;
 
-    private Animator AnimatorController;
     private LineRenderer LineRenderer;
     private NavMeshPath TestPath;
     private PathType ShownPath = PathType.None;
@@ -22,11 +21,9 @@ public class PlayableCharacterController : ActorController
         TestPath,
         None
     }
-    private void Start()
+    override public void Start()
     {
-        // Fetch Required Components
-        Agent = GetComponent<NavMeshAgent>();
-        AnimatorController = GetComponent<Animator>();
+        base.Start();
         LineRenderer = GetComponent<LineRenderer>();
         TestPath = new NavMeshPath();
 
@@ -34,10 +31,6 @@ public class PlayableCharacterController : ActorController
         LineRenderer.startWidth = 0.2f;
         LineRenderer.endWidth = 0.2f;
         LineRenderer.positionCount = 0;
-
-        // Setting Actor Stats
-        Stats.MaxDistance = 10f;
-        Stats.CurrentHealth = Stats.MaxHeatlh = 20f;
     }
     private void DrawPath(NavMeshPath path)
     {
@@ -81,7 +74,6 @@ public class PlayableCharacterController : ActorController
                 break;
         }
     }
-
     private void UpdateAgent()
     {
         if (Vector3.Distance(Agent.destination, transform.position) <= Agent.stoppingDistance)
@@ -94,23 +86,48 @@ public class PlayableCharacterController : ActorController
     {
         UpdateShownPath();
         UpdateAgent();
-    }
 
-    protected override void TakeTurn()
+        if(Input.GetKeyDown(KeyCode.P))
+        {
+            GameMaster.RequestBattle();
+        }
+    }
+    override protected void TakeTurn()
     {
         if (CurrentBattle == null)
             return;
 
-        if(Input.GetKeyDown(KeyCode.Tab))
+        if (Input.GetKeyDown(KeyCode.Tab))
         {
             CurrentBattle.RequestEndOfTurn(this);
             return;
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            RaycastHit hit;
+            Ray cameraRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(cameraRay, out hit))
+            {
+                GameObject hitObject = hit.transform.gameObject;
+                if (hitObject != null)
+                {
+                    ActorController hitController = hitObject.GetComponent<ActorController>();
+                    if (hitController != null && hitController != this)
+                    {
+                        if (Stats.AvaliableActions > 0 && Vector3.Distance(this.transform.position, hitController.transform.position) <= Stats.Reach)
+                        {
+                            CurrentBattle.RequestAttack(this, hitController, Sword.GetInstance());
+                            Stats.AvaliableActions -= 1;
+                        }
+                    }
+                }
+            }
         }
 
         UpdateShownPath();
         UpdateAgent();
     }
-
     override protected void UpdateAnimationState()
     {
         if(Agent.velocity.sqrMagnitude > 0.2)
@@ -121,7 +138,6 @@ public class PlayableCharacterController : ActorController
             AnimatorController.SetBool("IsJogging", false);
         }
     }
-
 
     public void SetDestination(Vector3 des)
     {
@@ -178,5 +194,10 @@ public class PlayableCharacterController : ActorController
         {
             ShownPath = PathType.None;
         }
+    }
+
+    public override void BattleInitialization()
+    {
+        // Nothing to initalize yet
     }
 }
